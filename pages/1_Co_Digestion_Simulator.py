@@ -4,7 +4,7 @@ import pandas as pd
 # 1. Page Configuration
 st.set_page_config(page_title="Co-Digestion Simulator", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. Strict Professional CSS Injection (No Emojis, Scaled Elements)
+# 2. Strict Professional CSS Injection
 st.markdown("""
 <style>
     .stApp { background-color: #F8FAFC; }
@@ -31,7 +31,6 @@ st.markdown("""
     .card-carbon { border-bottom: 4px solid #4CAF50; } .val-carbon { color: #4CAF50; }
     .card-revenue { border-bottom: 4px solid #9C27B0; } .val-revenue { color: #9C27B0; }
 
-    /* Refined, Highly Professional Alert Boxes */
     .diag-container { animation: fadeInUp 0.5s ease-out forwards; margin-top: 15px; margin-bottom: 25px; }
     .alert-box { padding: 16px 20px; border-radius: 6px; font-weight: 700; font-size: 16px; margin-bottom: 12px; border: 1px solid #E2E8F0; }
     .alert-green { background-color: #F0FDF4; border-left: 6px solid #16A34A; color: #166534; }
@@ -57,14 +56,11 @@ st.markdown("<p>Define demographic origins and feedstock ratios to execute a bio
 st.markdown("---")
 
 # 4. Agricultural Database Integration
-# Loading the external, verified ICAR dataset
 try:
     df_rice = pd.read_csv("rice_varieties_india.csv")
 except FileNotFoundError:
     st.error("Database Error: 'rice_varieties_india.csv' not found. Please ensure it is in the root directory.")
     st.stop()
-
-# Biological Stoichiometry Baseline
 
 # Biological Stoichiometry Baseline
 feedstocks = {
@@ -74,23 +70,20 @@ feedstocks = {
     "Poultry Waste": {"yield": 0.174, "C": 32.2, "N": 3.88, "lignin": 7.9}
 }
 
-# 5. UI: Demographics & Database Query
+# 5. UI: Demographics
 st.markdown("<span class='db-tag'>Live Database Query Active</span>", unsafe_allow_html=True)
 st.markdown("### 1. Location Demographics")
 
-# Dynamic Dropdowns querying the Pandas DataFrame
 states = df_rice['State'].unique().tolist()
 col_state, col_reg, col_var, col_batch = st.columns(4)
 
 with col_state:
     selected_state = st.selectbox("State", states)
     
-# Filter Regions based on selected State
 regions = df_rice[df_rice['State'] == selected_state]['Region'].unique().tolist()
 with col_reg:
     selected_region = st.selectbox("Agricultural Region", regions)
 
-# Filter Varieties based on selected Region
 varieties = df_rice[(df_rice['State'] == selected_state) & (df_rice['Region'] == selected_region)]['Variety'].tolist()
 with col_var:
     selected_variety = st.selectbox("Rice Variety", varieties)
@@ -98,10 +91,8 @@ with col_var:
 with col_batch:
     batch_mass_kg = st.number_input("Batch Mass (kg Wet)", min_value=1.0, value=1000.0, step=100.0)
 
-# Display specific trait from database to prove the query works
 trait = df_rice[(df_rice['Variety'] == selected_variety)]['Trait'].values[0]
 st.caption(f"Database Record Found: **{selected_variety}** is characterized as *{trait}*.")
-
 st.markdown("---")
 
 # 6. UI: Sliders for Relative Feedstock Mix
@@ -116,20 +107,31 @@ with col4: pw_input = st.slider("Poultry Waste", min_value=0, max_value=100, val
 
 total_input = rh_input + cd_input + fw_input + pw_input
 
-# 7. Action Button (Scaled down, professional size)
+# --- REAL-TIME SESSION STATE SAVING ---
+if total_input > 0:
+    st.session_state['batch_mass_kg'] = batch_mass_kg
+    st.session_state['f_rh'] = rh_input / total_input
+    st.session_state['f_cd'] = cd_input / total_input
+    st.session_state['f_fw'] = fw_input / total_input
+    st.session_state['f_pw'] = pw_input / total_input
+
+# 7. Action Button
 st.markdown("<br>", unsafe_allow_html=True)
-col_btn, col_empty = st.columns([1, 3]) # This strictly limits the button width
+col_btn, col_empty = st.columns([1, 3])
 with col_btn:
     predict_triggered = st.button("Generate Predictive Result", type="primary", use_container_width=True)
 
-# 8. Execution & Output Engine
+# 8. Execution Engine
 if predict_triggered:
     if total_input == 0:
         st.error("Please assign a value to at least one substrate slider before executing the prediction.")
     else:
         st.markdown("---")
         
-        f_rh, f_cd, f_fw, f_pw = rh_input/total_input, cd_input/total_input, fw_input/total_input, pw_input/total_input
+        f_rh = st.session_state['f_rh']
+        f_cd = st.session_state['f_cd']
+        f_fw = st.session_state['f_fw']
+        f_pw = st.session_state['f_pw']
 
         st.markdown("### Normalized Substrate Composition")
         st.markdown(f"""
@@ -152,7 +154,6 @@ if predict_triggered:
         co2_saved = methane_produced * 2
         revenue = energy_kwh * 8
 
-        # Biochemical Validation Layer
         st.markdown("<div class='diag-container'>", unsafe_allow_html=True)
         st.markdown("### Biochemical Health Diagnostics")
         
@@ -169,7 +170,6 @@ if predict_triggered:
             st.markdown(f"<div class='alert-box alert-yellow'>SUB-OPTIMAL ENVIRONMENT ({blend_CN:.1f} C:N Ratio) <br><span style='font-size:14px; font-weight:500;'>Digestion is biologically viable but will not operate at peak kinetic efficiency.</span></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Output KPIs
         st.markdown(f"### Predictive Yield Analysis (Based on {batch_mass_kg:,.0f} kg Input)")
         k1, k2, k3, k4 = st.columns(4)
         
